@@ -37,6 +37,7 @@ class NeuralNetwork(object):
             for b, W in zip(self._biases, self._weights):
                 x = activation_function(np.dot(W, x) + b.reshape(-1))   #func 15 on page 35
             predictions.append(x)
+        predictions = np.array(predictions)
         return predictions
 
     def train(self, x, y, epochs, learning_rate):
