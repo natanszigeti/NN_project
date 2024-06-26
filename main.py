@@ -4,43 +4,44 @@ import numpy as np
 from matplotlib import pyplot as plt
 import math
 
+import pca
 from src.NeuralNetwork import NeuralNetwork
 
 
-def load_digits(data: np.ndarray, train_split: int, random: bool = True):
+def load_and_split_digits(data: np.ndarray, train_split_ratio: float, random: bool = True):
     """
     function for splitting the digits task into a train and test set
     :param data: the data from mfeat
-    :param train_split: how we want to split the data
+    :param train_split_ratio: how we want to split the data
     :param random: whether we want the data to be returned in a random order
     :return: the train and test data like so (X_train, y_train), (X_test, y_test)
     """
-    # calculate how much the test split is
-    test_split = 100 - train_split
+    sample_size = data.shape[0]
+    samples_per_digit = int(sample_size/10)
+
+    train_per_digit = int(samples_per_digit*train_split_ratio)
+    test_per_digit = samples_per_digit - train_per_digit
 
     # create train and test labels
-    y_train = np.repeat(np.arange(10), (train_split * (data.shape[0] // 100)) // 10)
-    y_test = np.repeat(np.arange(10), (test_split * (data.shape[0] // 100)) // 10)
+    y_train = np.repeat(np.arange(10), train_per_digit)
+    y_test = np.repeat(np.arange(10), test_per_digit)
 
     X_train = []
     X_test = []
-    for i in range(0, data.shape[0], 100):
-        chunk = data[i:i + 100]  # get 100 samples (all the same label)
+    for i in range(0, sample_size, samples_per_digit):
+        chunk = data[i:i + samples_per_digit]  # get 200 samples (all the same label)
         # extend the data with the right amount of samples
-        X_train.extend(chunk[:train_split])
-        X_test.extend(chunk[test_split:])
+        if random:
+            train_indices = np.random.permutation(samples_per_digit)[:train_per_digit]
+            test_indices = np.random.permutation(samples_per_digit)[train_per_digit:]
+        else:
+            train_indices = np.arange(train_per_digit)
+            test_indices = np.arange(train_per_digit, samples_per_digit)
+        X_train.extend(chunk[train_indices])
+        X_test.extend(chunk[test_indices])
     # convert the lists to numpy arrays
     X_train = np.array(X_train)
     X_test = np.array(X_test)
-
-    if random:
-        # generate a random permutation of indices and shuffle the train and test data
-        train_indices = np.random.permutation(len(y_train))
-        test_indices = np.random.permutation(len(y_test))
-        X_train = X_train[train_indices]
-        X_test = X_test[test_indices]
-        y_train = y_train[train_indices]
-        y_test = y_test[test_indices]
 
     return (X_train, y_train), (X_test, y_test)
 
@@ -105,7 +106,7 @@ def preprocess_images(data):
     :return:
     """
     # data = data.reshape(data.shape[0], data.shape[1]*data.shape[2])
-    data = data/6 #255 for mnist
+    data = data/6  # 255 for mnist
     return data
 
 
@@ -127,13 +128,18 @@ if __name__ == "__main__":
     # load dataset
     # (X_train, y_train), (X_test, y_test) = mnist.load_data()
     cwd = os.getcwd()
-    mfeat_pix = np.loadtxt(cwd + '\src\mfeat.pix.txt')
+    mfeat_pix = np.loadtxt(cwd + r'\src\mfeat.pix.txt')
 
-    (X_train, y_train), (X_test, y_test) = load_digits(mfeat_pix, 80)
+    (X_train, y_train), (X_test, y_test) = load_and_split_digits(mfeat_pix, 0.8, False)
 
     # flatten and normalize the images if its from mnist
     X_train = preprocess_images(X_train)
     X_test = preprocess_images(X_test)
+
+    components = pca.calculate_pca(X_train, 2)
+
+    plt.scatter([i[0] for i in components], [i[1] for i in components], c=y_train, cmap="tab10")
+    plt.show()
 
     # change the single answer into a class vector
     y_train = preprocess_labels(y_train)
@@ -142,8 +148,8 @@ if __name__ == "__main__":
     # plot some of the digits
     # show_digits(X_train[200:225], y_train[200:225])
 
-    MLP = NeuralNetwork([240, 30, 10])
-    MLP.train(X_train, y_train, 3, 0.05)
-    y_pred = MLP.predict(X_test)
+    # MLP = NeuralNetwork([240, 30, 10])
+    # MLP.train(X_train, y_train, 3, 0.05)
+    # y_pred = MLP.predict(X_test)
 
-    show_digits(X_test[:25], y_pred[:25])
+    # show_digits(X_test[:25], y_pred[:25])
