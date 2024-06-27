@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import math
 
-import pca
+from src import pca
 from src.NeuralNetwork import NeuralNetwork
 
 
@@ -138,8 +138,8 @@ if __name__ == "__main__":
 
     components = pca.calculate_pca(X_train, 2)
 
-    plt.scatter([i[0] for i in components], [i[1] for i in components], c=y_train, cmap="tab10")
-    plt.show()
+    # plt.scatter([i[0] for i in components], [i[1] for i in components], c=y_train, cmap="tab10")
+    # plt.show()
 
     # change the single answer into a class vector
     y_train = preprocess_labels(y_train)
@@ -148,8 +148,8 @@ if __name__ == "__main__":
     # plot some of the digits
     # show_digits(X_train[200:225], y_train[200:225])
 
-    # MLP = NeuralNetwork([240, 30, 10])
-    # MLP.train(X_train, y_train, 3, 0.05)
-    # y_pred = MLP.predict(X_test)
+    MLP = NeuralNetwork([240, 30, 10], ["relu", "softmax"])
+    MLP.train(X_train, y_train, 1, 0.05, 1)
+    y_pred = MLP.predict(X_test)
 
     # show_digits(X_test[:25], y_pred[:25])

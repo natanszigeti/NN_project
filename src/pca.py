@@ -1,15 +1,16 @@
 import numpy as np
 from numpy.linalg import eig
-from sklearn.preprocessing import StandardScaler
 
 
-def calculate_pca(data, k):
+def calculate_pca(data, k: int = None):
     """
     Implementation of principal component analysis
     :param data: Data represented as M x N matrix, M = number of samples, N = number of features
-    :param k: Number of dimensions to reduce data to
+    :param k: Number of dimensions to reduce data to; if not specified, k = N
     :return: Data reduced to matrix of size M x k
     """
+    if k is None:
+        k = np.shape(data)[1]
     if k > np.shape(data)[1]:
         raise Exception("New dimensions too large!")
 
@@ -21,8 +22,7 @@ def calculate_pca(data, k):
 
     # Calculate eigenvalues and eigenvectors of covariance matrix
     eig_values, eig_vectors = eig(cov_matrix)
-    eig_vectors = eig_vectors.T
-    eigs_paired = [[eig_values[i], eig_vectors[i]] for i in range(len(eig_values))]
+    eigs_paired = [[eig_values[i], eig_vectors[:, i]] for i in range(len(eig_values))]
 
     # Sort eigenvectors according to corresponding eigenvalue, largest to smallest
     eigs_paired = sorted(eigs_paired, reverse=True, key=lambda x: x[0])
