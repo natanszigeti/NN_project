@@ -78,7 +78,7 @@ class NeuralNetwork(object):
         self._sizes = sizes
         self._layers = len(sizes)
         # create random biases for each neuron in each layer (besides input layer)
-        self._biases = [np.random.randn(neurons, 1) for neurons in sizes[1:]]
+        self._biases = [np.random.randn(neurons) for neurons in sizes[1:]]
         # create random weight matrices in a similar way
         self._weights = [np.random.randn(n_after, n_before) for n_after, n_before in zip(sizes[1:], sizes[:-1])]
         self._activ_funcs = activ_funcs
@@ -94,7 +94,7 @@ class NeuralNetwork(object):
         for x in data:
             # move through each layer of the NN and find the next neuron's values
             for b, W, a in zip(self._biases, self._weights, self._activ_funcs):
-                x = activation_function(np.dot(W, x) + b.reshape(-1), a)   # func 15 on page 35
+                x = activation_function(np.dot(W, x) + b, a)   # func 15 on page 35
             predictions.append(x)
         predictions = np.array(predictions)
         return predictions
@@ -130,6 +130,8 @@ class NeuralNetwork(object):
         """
         # We start with no changes to the weights and biases
         changes_b = [np.zeros(b.shape) for b in self._biases]
+        # print([b.shape for b in self._biases])
+        # print([np.shape(i) for i in changes_b])
         changes_w = [np.zeros(w.shape) for w in self._weights]
 
         for x, y in zip(x, y):
@@ -140,10 +142,14 @@ class NeuralNetwork(object):
             changes_b = [b1 + b2 for b1, b2 in zip(changes_b, change_b)]
             changes_w = [w1 + w2 for w1, w2 in zip(changes_w, change_w)]
 
+        # print([np.shape(i) for i in changes_b])
+
         # we update the weights based on the backpropagation result
         # (page 44)
         self._weights = [w - mu * cw for w, cw in zip(self._weights, changes_w)]
         self._biases = [b - mu * cb for b, cb in zip(self._biases, changes_b)]
+        # print([np.shape(i) for i in self._weights])
+        # print([np.shape(i) for i in self._biases])
 
     def _back_propagation(self, x, y):
         """
@@ -160,20 +166,20 @@ class NeuralNetwork(object):
         activations = [x]   # stores the values in each neuron, layer by layer
         z_values = [x]       # stores the z values that we need later when going back
         for b, w, a in zip(self._biases, self._weights, self._activ_funcs):
-            z = np.dot(w, activation) + b.reshape(-1)
+            z = np.dot(w, activation) + b
             activation = activation_function(z, a)
             z_values.append(z)
             activations.append(activation)
 
-        print("activ = ", z_values[-1])
-        print("pred = ", activations[-1], ", true = ", y)
+        # print("activ = ", z_values[-1])
+        # print("pred = ", activations[-1], ", true = ", y)
 
         # I got the following bit from the pseudocode on page 209 of the bible, I hope it works
         # do backpropagation
 
         # we don't need to calculate loss but it's good for debugging
         out_loss = loss(activations[-1], y)
-        print("Loss: ", out_loss)
+        # print("Loss: ", out_loss)
 
         delta_loss = loss_derivative(activations[-1], y)
         for i in range(self._layers - 1, 0, -1):
@@ -193,6 +199,7 @@ class NeuralNetwork(object):
         change_b.reverse()
         change_w.reverse()
 
-        print(change_b)
+        # print([np.shape(i) for i in change_b])
+        # print([np.shape(i) for i in change_w])
 
         return change_b, change_w
