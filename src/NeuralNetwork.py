@@ -16,9 +16,10 @@ def activation_function(z, function):
     return None
 
 
-def activation_derivative(z, function):
+def activation_derivative(z, function, true=None):
     """
 
+    :param true:
     :param z:
     :param function:
     :return:
@@ -26,8 +27,7 @@ def activation_derivative(z, function):
     if function == "relu":
         return [1 if i > 0 else 0 for i in z]
     elif function == "softmax":
-        z = np.clip(z, 1e-15, 1 - 1e-15)
-        return z * (np.ones(len(z)) - z)
+        return activation_function(z, "softmax") - true
     return None
 
 
@@ -38,9 +38,11 @@ def loss(pred, true):
     :param true: the values we would want instead
     :return: Cross entropy
     """
-    return np.mean(np.negative(true) * np.log(pred) - (np.ones(len(true)) - true) * np.log(np.ones(len(pred)) - pred))
+    return np.negative(np.sum(true * np.log(pred)))
 
 
+# DEPRECATED
+# DON'T ACTUALLY NEED THIS ANYMORE OOPS
 def loss_derivative(pred, true):
     """
     idek
@@ -50,7 +52,7 @@ def loss_derivative(pred, true):
     """
     if len(pred) != len(true):
         raise Exception("Pred and true not same length!")
-    return [(1 - true[i])/(1 - pred[i]) - true[i]/pred[i] for i in range(len(pred))]
+    return [(1 - true[i]) / (1 - pred[i]) - true[i] / pred[i] for i in range(len(pred))]
 
 
 def regularizer(weights, biases):
@@ -77,6 +79,10 @@ def regularizer_derivative(theta, wrt):
     return 0
 
 
+def he_init(n_before, n_after):
+    return np.random.randn(n_before, n_after) * np.sqrt(2 / n_before)
+
+
 class NeuralNetwork(object):
     def __init__(self, sizes, activ_funcs):
         """
@@ -87,7 +93,7 @@ class NeuralNetwork(object):
         # create random biases for each neuron in each layer (besides input layer)
         self._biases = [np.random.randn(neurons) for neurons in sizes[1:]]
         # create random weight matrices in a similar way
-        self._weights = [np.random.randn(n_after, n_before) for n_after, n_before in zip(sizes[1:], sizes[:-1])]
+        self._weights = [he_init(n_after, n_before) for n_after, n_before in zip(sizes[1:], sizes[:-1])]
         self._activ_funcs = activ_funcs
 
     def predict(self, data):
@@ -101,7 +107,7 @@ class NeuralNetwork(object):
         for x in data:
             # move through each layer of the NN and find the next neuron's values
             for b, W, a in zip(self._biases, self._weights, self._activ_funcs):
-                x = activation_function(np.dot(W, x) + b, a)   # func 15 on page 35
+                x = activation_function(np.dot(W, x) + b, a)  # func 15 on page 35
             predictions.append(x)
         predictions = np.array(predictions)
         return predictions
@@ -125,13 +131,15 @@ class NeuralNetwork(object):
         for i in range(epochs):
             indices = np.random.permutation(data_size)
             for j in range(batch_count):
-                this_batch = indices[int(j*data_size/batch_count):int((j+1)*data_size/batch_count)]
+                this_batch = indices[int(j * data_size / batch_count):int((j + 1) * data_size / batch_count)]
                 avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const)
                 loss_per_epoch.append(avg_loss)
-            print(f"Completed epoch {i+1} of {epochs}, average loss: ", avg_loss)
+            print(f"Completed epoch {i + 1} of {epochs}, average loss: ", avg_loss)
+
+        print(self._weights)
         return loss_per_epoch
 
-    def _gradient_descent(self, x, y, mu, lam):
+    def _gradient_descent(self, inp, outp, mu, lam):
         """
 
         :param x: training data input
@@ -147,12 +155,12 @@ class NeuralNetwork(object):
 
         avg_loss = []
 
-        for x, y in zip(x, y):
+        for x, y in zip(inp, outp):
             # for each training sample, we calculate how much we'd want the weights to change
             change_b, change_w, out_loss = self._back_propagation(x, y, lam)
 
-            change_b = [np.divide(change, len(x)) for change in change_b]
-            change_w = [np.divide(change, len(x)) for change in change_w]
+            change_b = [np.divide(change, len(inp)) for change in change_b]
+            change_w = [np.divide(change, len(inp)) for change in change_w]
 
             # we add these changes to the overall changes
             changes_b = [b1 + b2 for b1, b2 in zip(changes_b, change_b)]
@@ -181,9 +189,9 @@ class NeuralNetwork(object):
         change_w = []
 
         # first we feed forward through the network
-        activation = x      # start with the input
-        activations = [x]   # stores the values in each neuron, layer by layer
-        z_values = [x]       # stores the z values that we need later when going back
+        activation = x  # start with the input
+        activations = [x]  # stores the values in each neuron, layer by layer
+        z_values = [x]  # stores the z values that we need later when going back
         for b, w, a in zip(self._biases, self._weights, self._activ_funcs):
             z = np.dot(w, activation) + b
             activation = activation_function(z, a)
@@ -197,24 +205,24 @@ class NeuralNetwork(object):
         # do backpropagation
 
         # we don't need to calculate loss but it's good for debugging
-        out_loss = loss(activations[-1], y) + lam * regularizer(self._weights, self._biases)
+        out_loss = loss(activations[-1], y)  # + lam * regularizer(self._weights, self._biases)
         # print("Loss: ", out_loss)
 
-        delta_loss = loss_derivative(activations[-1], y)
+        delta_loss = np.ones(len(y))
         for i in range(self._layers - 1, 0, -1):
             # print(z_values[i])
             # print(self._activ_funcs[i-1])
-            delta_activation = delta_loss * activation_derivative(z_values[i], self._activ_funcs[i-1])
+            delta_activation = delta_loss * activation_derivative(z_values[i], self._activ_funcs[i - 1], y)
             # print("delta_activation = ", delta_activation)
-            delta_bias = delta_activation + lam * regularizer_derivative(self._biases[i-1], "biases")
+            delta_bias = delta_activation + lam * regularizer_derivative(self._biases[i - 1], "biases")
             # print("prev layer activation shape = ", np.shape(z_values[i-1].T))
-            delta_weights = np.outer(delta_activation, z_values[i-1].T) + \
-                            lam * regularizer_derivative(self._weights[i-1], "weights")
+            delta_weights = np.outer(delta_activation, z_values[i - 1].T) + \
+                            lam * regularizer_derivative(self._weights[i - 1], "weights")
             # print("delta_weights shape = ", np.shape(delta_weights))
             change_b.append(delta_bias)
             change_w.append(delta_weights)
             # print("weights shape ", np.shape(self._weights[i-1].T))
-            delta_loss = np.matmul(self._weights[i-1].T, delta_activation)
+            delta_loss = np.matmul(self._weights[i - 1].T, delta_activation)
 
         change_b.reverse()
         change_w.reverse()

@@ -1,4 +1,6 @@
 import os
+import time
+
 import numpy as np
 # from tensorflow.keras.datasets import mnist
 from matplotlib import pyplot as plt
@@ -171,9 +173,11 @@ if __name__ == "__main__":
     # show_digits(X_train[200:225], y_train[200:225])
 
     MLP = NeuralNetwork([100, 30, 10], ["relu", "softmax"])
-    epoch_loss = MLP.train(X_train_pca, y_train, 300, 0.005, 1, 0)
+    start_time = time.time()
+    epoch_loss = MLP.train(X_train_pca, y_train, 200, 0.008, 10, 0)
+    print("training mlp took ", time.time() - start_time)
 
-    plt.plot(np.arange(299), epoch_loss[1:])
+    plt.plot(np.arange(1999), epoch_loss[1:])
     plt.show()
 
     y_pred = MLP.predict(X_test_pca)
@@ -181,8 +185,8 @@ if __name__ == "__main__":
     print("Test loss = ", np.mean([loss(pred, test) for pred, test in zip(y_pred, y_test)]))
 
     acc = check_predictions(y_pred, y_test)
-    print(acc)
+    print(acc, " mean: ", np.mean(acc))
 
     # print([(np.argmax(y_test[i]), np.argmax(y_pred[i])) for i in range(len(y_test))])
 
-    show_digits(X_test[:25], y_pred[:25])
+    # show_digits(X_test[:25], y_pred[:25])
