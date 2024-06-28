@@ -11,8 +11,8 @@ def activation_function(z, function):
     """
     if function == "relu":
         return [i if i > 0 else 0 for i in z]
-    if function == "softmax":
-        return np.exp(z) / sum(np.exp(z))
+    elif function == "softmax":
+        return np.clip(np.exp(z - np.max(z)) / sum(np.exp(z - np.max(z))), 1e-15, 1 - 1e-15)
     return None
 
 
@@ -25,7 +25,8 @@ def activation_derivative(z, function):
     """
     if function == "relu":
         return [1 if i > 0 else 0 for i in z]
-    if function == "softmax":
+    elif function == "softmax":
+        z = np.clip(z, 1e-15, 1 - 1e-15)
         return z * (np.ones(len(z)) - z)
     return None
 
@@ -111,14 +112,17 @@ class NeuralNetwork(object):
         :return:
         """
         data_size = len(x)
+        loss_per_epoch = []
         if data_size != len(y):
             raise Exception("X and y are not the same length!")
         for i in range(epochs):
             indices = np.random.permutation(data_size)
             for j in range(batch_count):
                 this_batch = indices[int(j*data_size/batch_count):int((j+1)*data_size/batch_count)]
-                self._gradient_descent(x[this_batch], y[this_batch], learning_rate)
-            print(f"Completed epoch {i+1} of {epochs}")
+                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate)
+                loss_per_epoch.append(avg_loss)
+            print(f"Completed epoch {i+1} of {epochs}, average loss: ", avg_loss)
+        return loss_per_epoch
 
     def _gradient_descent(self, x, y, mu):
         """
@@ -134,13 +138,20 @@ class NeuralNetwork(object):
         # print([np.shape(i) for i in changes_b])
         changes_w = [np.zeros(w.shape) for w in self._weights]
 
+        avg_loss = []
+
         for x, y in zip(x, y):
             # for each training sample, we calculate how much we'd want the weights to change
-            change_b, change_w = self._back_propagation(x, y)
+            change_b, change_w, out_loss = self._back_propagation(x, y)
+
+            change_b = [np.divide(change, len(x)) for change in change_b]
+            change_w = [np.divide(change, len(x)) for change in change_w]
 
             # we add these changes to the overall changes
             changes_b = [b1 + b2 for b1, b2 in zip(changes_b, change_b)]
             changes_w = [w1 + w2 for w1, w2 in zip(changes_w, change_w)]
+
+            avg_loss.append(out_loss)
 
         # print([np.shape(i) for i in changes_b])
 
@@ -150,6 +161,7 @@ class NeuralNetwork(object):
         self._biases = [b - mu * cb for b, cb in zip(self._biases, changes_b)]
         # print([np.shape(i) for i in self._weights])
         # print([np.shape(i) for i in self._biases])
+        return np.mean(avg_loss)
 
     def _back_propagation(self, x, y):
         """
@@ -202,4 +214,4 @@ class NeuralNetwork(object):
         # print([np.shape(i) for i in change_b])
         # print([np.shape(i) for i in change_w])
 
-        return change_b, change_w
+        return change_b, change_w, out_loss

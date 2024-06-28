@@ -149,7 +149,13 @@ if __name__ == "__main__":
     # show_digits(X_train[200:225], y_train[200:225])
 
     MLP = NeuralNetwork([240, 30, 10], ["relu", "softmax"])
-    MLP.train(X_train, y_train, 1, 0.05, 1)
+    epoch_loss = MLP.train(X_train, y_train, 300, 0.005, 1)
+
+    plt.plot(np.arange(300), epoch_loss)
+    plt.show()
+    #
     y_pred = MLP.predict(X_test)
+    #
+    # print([(np.argmax(y_test[i]), np.argmax(y_pred[i])) for i in range(len(y_test))])
 
     # show_digits(X_test[:25], y_pred[:25])
