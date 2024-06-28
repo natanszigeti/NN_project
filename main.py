@@ -124,6 +124,25 @@ def preprocess_labels(labels):
     return vector_labels
 
 
+def check_predictions(pred, true):
+    """
+
+    :param pred:
+    :param true:
+    :return:
+    """
+    accuracy = np.zeros(10)
+    digit_count = np.zeros(10)
+    for p, t in zip(pred, true):
+        pr = np.argmax(p)
+        tr = np.argmax(t)
+        digit_count[tr] += 1
+        accuracy[tr] += 1 if pr == tr else 0
+    for i in range(10):
+        accuracy[i] /= digit_count[i]
+    return accuracy
+
+
 if __name__ == "__main__":
     # load dataset
     # (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -160,6 +179,9 @@ if __name__ == "__main__":
     y_pred = MLP.predict(X_test_pca)
 
     print("Test loss = ", np.mean([loss(pred, test) for pred, test in zip(y_pred, y_test)]))
+
+    acc = check_predictions(y_pred, y_test)
+    print(acc)
 
     # print([(np.argmax(y_test[i]), np.argmax(y_pred[i])) for i in range(len(y_test))])
 
