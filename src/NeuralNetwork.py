@@ -53,22 +53,28 @@ def loss_derivative(pred, true):
     return [(1 - true[i])/(1 - pred[i]) - true[i]/pred[i] for i in range(len(pred))]
 
 
-def regularizer(weights):
+def regularizer(weights, biases):
     """
     L1 regularizer, this is probably wrong
     :param weights: Weight matrix
+    :param biases: Bias matrix
     :return: L1 :D
     """
-    return np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in weights])))
+    return np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in weights]))) + \
+        np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in biases])))
 
 
-def regularizer_derivative(weights):
+def regularizer_derivative(theta, wrt):
     """
 
-    :param weights:
+    :param theta:
     :return:
     """
-    return None
+    if wrt == "weights":
+        return np.sum(np.sign(np.hstack([np.matrix.flatten(item) for item in theta])))
+    elif wrt == "biases":
+        return np.sum(np.sign(np.hstack([item for item in theta])))
+    return 0
 
 
 class NeuralNetwork(object):
@@ -100,7 +106,7 @@ class NeuralNetwork(object):
         predictions = np.array(predictions)
         return predictions
 
-    def train(self, x, y, epochs, learning_rate, batch_count):
+    def train(self, x, y, epochs, learning_rate, batch_count, reg_const):
         """
         trains the neural network.
         (made this a separate function because usually there's more stuff you can do here)
@@ -109,7 +115,8 @@ class NeuralNetwork(object):
         :param epochs: how many iterations we want to train it for
         :param learning_rate: how big the steps in the gradient descent should be
         :param batch_count: number of batches to split data into per epoch
-        :return:
+        :param reg_const: regularization constant
+        :return: mean loss per training epoch
         """
         data_size = len(x)
         loss_per_epoch = []
@@ -119,12 +126,12 @@ class NeuralNetwork(object):
             indices = np.random.permutation(data_size)
             for j in range(batch_count):
                 this_batch = indices[int(j*data_size/batch_count):int((j+1)*data_size/batch_count)]
-                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate)
+                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const)
                 loss_per_epoch.append(avg_loss)
             print(f"Completed epoch {i+1} of {epochs}, average loss: ", avg_loss)
         return loss_per_epoch
 
-    def _gradient_descent(self, x, y, mu):
+    def _gradient_descent(self, x, y, mu, lam):
         """
 
         :param x: training data input
@@ -142,7 +149,7 @@ class NeuralNetwork(object):
 
         for x, y in zip(x, y):
             # for each training sample, we calculate how much we'd want the weights to change
-            change_b, change_w, out_loss = self._back_propagation(x, y)
+            change_b, change_w, out_loss = self._back_propagation(x, y, lam)
 
             change_b = [np.divide(change, len(x)) for change in change_b]
             change_w = [np.divide(change, len(x)) for change in change_w]
@@ -163,7 +170,7 @@ class NeuralNetwork(object):
         # print([np.shape(i) for i in self._biases])
         return np.mean(avg_loss)
 
-    def _back_propagation(self, x, y):
+    def _back_propagation(self, x, y, lam):
         """
         performs backpropagation for a single sample
         :param x: inputs
@@ -190,7 +197,7 @@ class NeuralNetwork(object):
         # do backpropagation
 
         # we don't need to calculate loss but it's good for debugging
-        out_loss = loss(activations[-1], y)
+        out_loss = loss(activations[-1], y) + lam * regularizer(self._weights, self._biases)
         # print("Loss: ", out_loss)
 
         delta_loss = loss_derivative(activations[-1], y)
@@ -199,9 +206,10 @@ class NeuralNetwork(object):
             # print(self._activ_funcs[i-1])
             delta_activation = delta_loss * activation_derivative(z_values[i], self._activ_funcs[i-1])
             # print("delta_activation = ", delta_activation)
-            delta_bias = delta_activation  # + gradient of regularization function wrt b
+            delta_bias = delta_activation + lam * regularizer_derivative(self._biases[i-1], "biases")
             # print("prev layer activation shape = ", np.shape(z_values[i-1].T))
-            delta_weights = np.outer(delta_activation, z_values[i-1].T)  # + gradient of regularization function wrt W
+            delta_weights = np.outer(delta_activation, z_values[i-1].T) + \
+                            lam * regularizer_derivative(self._weights[i-1], "weights")
             # print("delta_weights shape = ", np.shape(delta_weights))
             change_b.append(delta_bias)
             change_w.append(delta_weights)

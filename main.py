@@ -4,8 +4,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import math
 
-from src import pca
-from src.NeuralNetwork import NeuralNetwork
+from src.pca import PCA
+from src.NeuralNetwork import *
 
 
 def load_and_split_digits(data: np.ndarray, train_split_ratio: float, random: bool = True):
@@ -136,9 +136,11 @@ if __name__ == "__main__":
     X_train = preprocess_images(X_train)
     X_test = preprocess_images(X_test)
 
-    components = pca.calculate_pca(X_train, 2)
+    pca = PCA(100).fit(X_train)
+    X_train_pca = pca.transform(X_train)
+    X_test_pca = pca.transform(X_test)
 
-    # plt.scatter([i[0] for i in components], [i[1] for i in components], c=y_train, cmap="tab10")
+    # plt.scatter([i[0] for i in X_train_pca], [i[1] for i in X_train_pca], c=y_train, cmap="tab10")
     # plt.show()
 
     # change the single answer into a class vector
@@ -146,16 +148,19 @@ if __name__ == "__main__":
     y_test = preprocess_labels(y_test)
 
     # plot some of the digits
+    # indices = np.random.permutation(len(X_train))
     # show_digits(X_train[200:225], y_train[200:225])
 
-    MLP = NeuralNetwork([240, 30, 10], ["relu", "softmax"])
-    epoch_loss = MLP.train(X_train, y_train, 300, 0.005, 1)
+    MLP = NeuralNetwork([100, 30, 10], ["relu", "softmax"])
+    epoch_loss = MLP.train(X_train_pca, y_train, 300, 0.005, 1, 0)
 
-    plt.plot(np.arange(300), epoch_loss)
+    plt.plot(np.arange(299), epoch_loss[1:])
     plt.show()
-    #
-    y_pred = MLP.predict(X_test)
-    #
+
+    y_pred = MLP.predict(X_test_pca)
+
+    print("Test loss = ", np.mean([loss(pred, test) for pred, test in zip(y_pred, y_test)]))
+
     # print([(np.argmax(y_test[i]), np.argmax(y_pred[i])) for i in range(len(y_test))])
 
-    # show_digits(X_test[:25], y_pred[:25])
+    show_digits(X_test[:25], y_pred[:25])
