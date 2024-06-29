@@ -54,7 +54,7 @@ def loss_derivative(pred, true):
         raise Exception("Pred and true not same length!")
     return [(1 - true[i]) / (1 - pred[i]) - true[i] / pred[i] for i in range(len(pred))]
 
-
+# Dont need this actually i think
 def regularizer(weights, biases):
     """
     L1 regularizer, this is probably wrong
@@ -62,21 +62,17 @@ def regularizer(weights, biases):
     :param biases: Bias matrix
     :return: L1 :D
     """
-    return np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in weights]))) + \
-        np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in biases])))
+    return np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in weights])))  # + \
+        # np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in biases])))
 
 
-def regularizer_derivative(theta, wrt):
+def regularizer_derivative(theta):
     """
 
     :param theta:
     :return:
     """
-    if wrt == "weights":
-        return np.sum(np.sign(np.hstack([np.matrix.flatten(item) for item in theta])))
-    elif wrt == "biases":
-        return np.sum(np.sign(np.hstack([item for item in theta])))
-    return 0
+    return np.sign(theta)
 
 
 def he_init(n_before, n_after):
@@ -214,10 +210,10 @@ class NeuralNetwork(object):
             # print(self._activ_funcs[i-1])
             delta_activation = delta_loss * activation_derivative(z_values[i], self._activ_funcs[i - 1], y)
             # print("delta_activation = ", delta_activation)
-            delta_bias = delta_activation + lam * regularizer_derivative(self._biases[i - 1], "biases")
+            delta_bias = delta_activation  # + lam * regularizer_derivative(self._biases[i - 1])
             # print("prev layer activation shape = ", np.shape(z_values[i-1].T))
             delta_weights = np.outer(delta_activation, z_values[i - 1].T) + \
-                            lam * regularizer_derivative(self._weights[i - 1], "weights")
+                            lam * regularizer_derivative(self._weights[i - 1])
             # print("delta_weights shape = ", np.shape(delta_weights))
             change_b.append(delta_bias)
             change_w.append(delta_weights)

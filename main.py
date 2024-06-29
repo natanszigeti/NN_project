@@ -172,15 +172,15 @@ if __name__ == "__main__":
     # indices = np.random.permutation(len(X_train))
     # show_digits(X_train[200:225], y_train[200:225])
 
-    MLP = NeuralNetwork([100, 30, 10], ["relu", "softmax"])
+    MLP = NeuralNetwork([240, 30, 10], ["relu", "softmax"])
     start_time = time.time()
-    epoch_loss = MLP.train(X_train_pca, y_train, 200, 0.008, 10, 0)
+    epoch_loss = MLP.train(X_train, y_train, 200, 0.008, 5, 0.0001)
     print("training mlp took ", time.time() - start_time)
 
-    plt.plot(np.arange(1999), epoch_loss[1:])
+    plt.plot(np.arange(999), epoch_loss[1:])
     plt.show()
 
-    y_pred = MLP.predict(X_test_pca)
+    y_pred = MLP.predict(X_test)
 
     print("Test loss = ", np.mean([loss(pred, test) for pred, test in zip(y_pred, y_test)]))
 
