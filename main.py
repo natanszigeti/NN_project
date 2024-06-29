@@ -151,7 +151,7 @@ if __name__ == "__main__":
     cwd = os.getcwd()
     mfeat_pix = np.loadtxt(cwd + r'\src\mfeat.pix.txt')
 
-    (X_train, y_train), (X_test, y_test) = load_and_split_digits(mfeat_pix, 0.8, False)
+    (X_train, y_train), (X_test, y_test) = load_and_split_digits(mfeat_pix, 0.25, False)
 
     # flatten and normalize the images if its from mnist
     X_train = preprocess_images(X_train)
@@ -172,9 +172,9 @@ if __name__ == "__main__":
     # indices = np.random.permutation(len(X_train))
     # show_digits(X_train[200:225], y_train[200:225])
 
-    MLP = NeuralNetwork([240, 30, 10], ["relu", "softmax"])
+    MLP = NeuralNetwork([240, 50, 10], ["relu", "softmax"])
     start_time = time.time()
-    epoch_loss = MLP.train(X_train, y_train, 200, 0.008, 5, 0.0001)
+    epoch_loss = MLP.train(X_train, y_train, 200, 0.005, 5, 0.9, "L2")
     print("training mlp took ", time.time() - start_time)
 
     plt.plot(np.arange(999), epoch_loss[1:])

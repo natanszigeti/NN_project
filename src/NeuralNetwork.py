@@ -54,6 +54,7 @@ def loss_derivative(pred, true):
         raise Exception("Pred and true not same length!")
     return [(1 - true[i]) / (1 - pred[i]) - true[i] / pred[i] for i in range(len(pred))]
 
+# DEPRECATED
 # Dont need this actually i think
 def regularizer(weights, biases):
     """
@@ -66,13 +67,17 @@ def regularizer(weights, biases):
         # np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in biases])))
 
 
-def regularizer_derivative(theta):
+def regularizer_derivative(theta, type):
     """
 
     :param theta:
     :return:
     """
-    return np.sign(theta)
+    if type == "L1":
+        return np.sign(theta)
+    elif type == "L2":
+        return theta
+    return 0
 
 
 def he_init(n_before, n_after):
@@ -108,7 +113,7 @@ class NeuralNetwork(object):
         predictions = np.array(predictions)
         return predictions
 
-    def train(self, x, y, epochs, learning_rate, batch_count, reg_const):
+    def train(self, x, y, epochs, learning_rate, batch_count, reg_const, reg_norm):
         """
         trains the neural network.
         (made this a separate function because usually there's more stuff you can do here)
@@ -128,14 +133,14 @@ class NeuralNetwork(object):
             indices = np.random.permutation(data_size)
             for j in range(batch_count):
                 this_batch = indices[int(j * data_size / batch_count):int((j + 1) * data_size / batch_count)]
-                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const)
+                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const, reg_norm)
                 loss_per_epoch.append(avg_loss)
             print(f"Completed epoch {i + 1} of {epochs}, average loss: ", avg_loss)
 
         print(self._weights)
         return loss_per_epoch
 
-    def _gradient_descent(self, inp, outp, mu, lam):
+    def _gradient_descent(self, inp, outp, mu, lam, reg):
         """
 
         :param x: training data input
@@ -153,7 +158,7 @@ class NeuralNetwork(object):
 
         for x, y in zip(inp, outp):
             # for each training sample, we calculate how much we'd want the weights to change
-            change_b, change_w, out_loss = self._back_propagation(x, y, lam)
+            change_b, change_w, out_loss = self._back_propagation(x, y, lam, reg)
 
             change_b = [np.divide(change, len(inp)) for change in change_b]
             change_w = [np.divide(change, len(inp)) for change in change_w]
@@ -174,7 +179,7 @@ class NeuralNetwork(object):
         # print([np.shape(i) for i in self._biases])
         return np.mean(avg_loss)
 
-    def _back_propagation(self, x, y, lam):
+    def _back_propagation(self, x, y, lam, reg):
         """
         performs backpropagation for a single sample
         :param x: inputs
@@ -210,10 +215,10 @@ class NeuralNetwork(object):
             # print(self._activ_funcs[i-1])
             delta_activation = delta_loss * activation_derivative(z_values[i], self._activ_funcs[i - 1], y)
             # print("delta_activation = ", delta_activation)
-            delta_bias = delta_activation  # + lam * regularizer_derivative(self._biases[i - 1])
+            delta_bias = delta_activation  # + lam * regularizer_derivative(self._biases[i - 1], reg)
             # print("prev layer activation shape = ", np.shape(z_values[i-1].T))
             delta_weights = np.outer(delta_activation, z_values[i - 1].T) + \
-                            lam * regularizer_derivative(self._weights[i - 1])
+                            lam * regularizer_derivative(self._weights[i - 1], reg)
             # print("delta_weights shape = ", np.shape(delta_weights))
             change_b.append(delta_bias)
             change_w.append(delta_weights)
