@@ -2,7 +2,7 @@
 import numpy as np
 
 
-def activation_function(z, function):
+def activation_function(z, function: str) -> list | np.ndarray | None:
     """
     Defines several activation functions, as necessary
     :param z: Vector representing input to layer, consisting of the sum of weighted inputs and biases
@@ -16,13 +16,13 @@ def activation_function(z, function):
     return None
 
 
-def activation_derivative(z, function, true=None):
+def activation_derivative(z, function: str, true: list[float]=None) -> list | np.ndarray | None:
     """
-
-    :param true:
-    :param z:
-    :param function:
-    :return:
+    The derivative of the activation function
+    :param z: Vector representing input to layer, consisting of the sum of weighted inputs and biases
+    :param function: String representing activation function to use
+    :param true: A list of the desired values
+    :return: the derivative of the activation function
     """
     if function == "relu":
         return [1 if i > 0 else 0 for i in z]
@@ -31,12 +31,12 @@ def activation_derivative(z, function, true=None):
     return None
 
 
-def loss(pred, true):
+def loss(pred: list[float], true: list[int | float]) -> np.ndarray:
     """
-    Defines a loss function
+    Calculates the categorical cross entropy loss function
     :param pred: the predicted values by the model
     :param true: the values we would want instead
-    :return: Cross entropy
+    :return: Cross entropy value
     """
     return np.negative(np.sum(true * np.log(pred)))
 
@@ -67,37 +67,46 @@ def regularizer(weights, biases):
         # np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in biases])))
 
 
-def regularizer_derivative(theta, type):
+def regularizer_derivative(theta, norm):
     """
 
-    :param theta:
+    :param theta: collection of trainable parameters
+    :param norm: what type of regularizer to use
     :return:
     """
-    if type == "L1":
+    if norm == "L1":
         return np.sign(theta)
-    elif type == "L2":
+    elif norm == "L2":
         return theta
     return 0
 
 
-def he_init(n_before, n_after):
-    return np.random.randn(n_before, n_after) * np.sqrt(2 / n_before)
+def he_init(n_before: int, n_after: int) -> np.ndarray:
+    """
+    He initialization of the weights.
+    :param n_before: the number of neurons in the previous layer
+    :param n_after: the number of neurons in the next layer
+    :return: a matrix with He initialized weights connecting the previous and next layer
+    """
+    return np.random.randn(n_after, n_before) * np.sqrt(2 / n_before)
 
 
 class NeuralNetwork(object):
-    def __init__(self, sizes, activ_funcs):
+        def __init__(self, sizes: list[int], activ_funcs: list[str]):
         """
-        Class for a multilayer perceptron
+        Class for a Multilayer perceptron neural network
+        :param sizes: An array of integers detailing how many neurons each layer should have
+        :param activ_funcs: An array of strings detailing the activation functions for each layer after input
         """
         self._sizes = sizes
         self._layers = len(sizes)
         # create random biases for each neuron in each layer (besides input layer)
         self._biases = [np.random.randn(neurons) for neurons in sizes[1:]]
         # create random weight matrices in a similar way
-        self._weights = [he_init(n_after, n_before) for n_after, n_before in zip(sizes[1:], sizes[:-1])]
+        self._weights = [he_init(n_before, n_after) for n_before, n_after in zip(sizes[:-1], sizes[1:])]
         self._activ_funcs = activ_funcs
 
-    def predict(self, data):
+    def predict(self, data: np.ndarray) -> np.ndarray:
         """
         Calculates the values of the output layer based on the inputs and the current model
         :param data: the data we want to make predictions for
@@ -113,70 +122,68 @@ class NeuralNetwork(object):
         predictions = np.array(predictions)
         return predictions
 
-    def train(self, x, y, epochs, learning_rate, batch_count, reg_const, reg_norm):
+    def train(self, x: np.ndarray, y: np.ndarray, epochs: int, learning_rate: float, batch_count: int, reg_const: float, reg_norm: str) -> list[float]:
         """
         trains the neural network.
-        (made this a separate function because usually there's more stuff you can do here)
         :param x: training data, input
         :param y: training data, desired output
         :param epochs: how many iterations we want to train it for
         :param learning_rate: how big the steps in the gradient descent should be
         :param batch_count: number of batches to split data into per epoch
         :param reg_const: regularization constant
+        :param reg_norm: either "L1" or "L2" based on which regularizer to use
         :return: mean loss per training epoch
         """
         data_size = len(x)
-        loss_per_epoch = []
         if data_size != len(y):
             raise Exception("X and y are not the same length!")
+
+        loss_per_epoch = []  # can be used for graphing the loss per epoch later
         for i in range(epochs):
+            # create random indices so the data is shuffled each time
             indices = np.random.permutation(data_size)
             for j in range(batch_count):
                 this_batch = indices[int(j * data_size / batch_count):int((j + 1) * data_size / batch_count)]
-                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const, reg_norm)
+                # perform gradient descent with this batch
+                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const)
+                # keep track of the loss
                 loss_per_epoch.append(avg_loss)
             print(f"Completed epoch {i + 1} of {epochs}, average loss: ", avg_loss)
-
-        print(self._weights)
         return loss_per_epoch
 
-    def _gradient_descent(self, inp, outp, mu, lam, reg):
+    def _gradient_descent(self, inp: np.ndarray, outp: np.ndarray, mu: float, lam: float, reg_norm: str) -> float:
         """
-
-        :param x: training data input
-        :param y: correct answers to the training samples
+        performs gradient descent for the given data batch
+        :param inp: training data input
+        :param outp: correct answers to the training samples
         :param mu: learning rate
-        :return:
+        :param lam: regularization constant
+        :param reg_norm: type of regularization to use
+        :return: the average loss of this batch
         """
         # We start with no changes to the weights and biases
         changes_b = [np.zeros(b.shape) for b in self._biases]
-        # print([b.shape for b in self._biases])
-        # print([np.shape(i) for i in changes_b])
         changes_w = [np.zeros(w.shape) for w in self._weights]
 
         avg_loss = []
 
         for x, y in zip(inp, outp):
             # for each training sample, we calculate how much we'd want the weights to change
-            change_b, change_w, out_loss = self._back_propagation(x, y, lam, reg)
+            change_b, change_w, out_loss = self._back_propagation(x, y, lam)
 
-            change_b = [np.divide(change, len(inp)) for change in change_b]
-            change_w = [np.divide(change, len(inp)) for change in change_w]
+            # we add these changes (averaged over the whole training batch) to the overall changes
+            changes_b = [b1 + b2 / len(inp) for b1, b2 in zip(changes_b, change_b)]
+            changes_w = [w1 + w2 / len(inp) for w1, w2 in zip(changes_w, change_w)]
 
-            # we add these changes to the overall changes
-            changes_b = [b1 + b2 for b1, b2 in zip(changes_b, change_b)]
-            changes_w = [w1 + w2 for w1, w2 in zip(changes_w, change_w)]
-
+            # keep track of the loss found by the backpropagation
             avg_loss.append(out_loss)
-
-        # print([np.shape(i) for i in changes_b])
 
         # we update the weights based on the backpropagation result
         # (page 44)
         self._weights = [w - mu * cw for w, cw in zip(self._weights, changes_w)]
         self._biases = [b - mu * cb for b, cb in zip(self._biases, changes_b)]
-        # print([np.shape(i) for i in self._weights])
-        # print([np.shape(i) for i in self._biases])
+
+        # return the average of the loss
         return np.mean(avg_loss)
 
     def _back_propagation(self, x, y, lam, reg):
