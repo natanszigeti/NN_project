@@ -1,8 +1,6 @@
 import os
 import time
-
 import numpy as np
-# from tensorflow.keras.datasets import mnist
 from matplotlib import pyplot as plt
 import math
 
@@ -145,13 +143,47 @@ def check_predictions(pred, true):
     return accuracy
 
 
+def cross_validate(x: np.ndarray, y: np.ndarray, epochs: int, learn_rate: float, batch_count: int, reg_const: float,
+                   reg_norm: str, hidden_layer_size: int, k: int, ) -> list[np.ndarray]:
+    """
+    Calculates the accuracy of an MLP model with a single hidden layer on the data provided, using k-fold
+    cross-validation.
+    :param x: The training data set
+    :param y: The training labels
+    :param epochs: Number of epochs to train the MLP for
+    :param learn_rate: The learning rate of the MLP
+    :param batch_count: The number of batches for stochastic gradient descent in MLP training
+    :param reg_const: Regularization constant
+    :param reg_norm: Regularization norm ("L1" or "L2")
+    :param hidden_layer_size: Number of neurons in the hidden layer of the MLP
+    :param k: Number of folds for cross-validation
+    :return: List of lists of accuracies of shape (k, 10)
+    """
+    sample_size = len(x)
+    if sample_size != len(y):
+        raise Exception("X and y not the same size!")
+    indices = np.random.permutation(sample_size)
+    split_x = [x[indices[int(i*sample_size/k):int((i+1)*sample_size/k)]] for i in range(k)]
+    split_y = [y[indices[int(i*sample_size/k):int((i+1)*sample_size/k)]] for i in range(k)]
+    accuracies = []
+    for i in range(len(split_x)):
+        train_x = np.vstack([split_x[j] for j in range(len(split_x)) if j != i])
+        train_y = np.vstack([split_y[j] for j in range(len(split_y)) if j != i])
+        test_x = split_x[i]
+        test_y = split_y[i]
+        MLP = NeuralNetwork([x.shape[1], hidden_layer_size, y.shape[1]], ["relu", "softmax"])
+        MLP.train(train_x, train_y, epochs, learn_rate, batch_count, reg_const, reg_norm)
+        accuracies.append(check_predictions(MLP.predict(test_x), test_y))
+    return accuracies
+
+
 if __name__ == "__main__":
     # load dataset
     # (X_train, y_train), (X_test, y_test) = mnist.load_data()
     cwd = os.getcwd()
     mfeat_pix = np.loadtxt(cwd + r'\src\mfeat.pix.txt')
 
-    (X_train, y_train), (X_test, y_test) = load_and_split_digits(mfeat_pix, 0.25, False)
+    (X_train, y_train), (X_test, y_test) = load_and_split_digits(mfeat_pix, 0.5, False)
 
     # flatten and normalize the images if its from mnist
     X_train = preprocess_images(X_train)
@@ -172,20 +204,24 @@ if __name__ == "__main__":
     # indices = np.random.permutation(len(X_train))
     # show_digits(X_train[200:225], y_train[200:225])
 
-    MLP = NeuralNetwork([240, 50, 10], ["relu", "softmax"])
-    start_time = time.time()
-    epoch_loss = MLP.train(X_train, y_train, 200, 0.005, 5, 0.9, "L2")
-    print("training mlp took ", time.time() - start_time)
+    accs = cross_validate(X_train, y_train, 200, 0.005, 5, 0.001, "L2", 50, 5)
 
-    plt.plot(np.arange(999), epoch_loss[1:])
-    plt.show()
+    print(np.mean([np.mean(acc) for acc in accs]))
 
-    y_pred = MLP.predict(X_test)
-
-    print("Test loss = ", np.mean([loss(pred, test) for pred, test in zip(y_pred, y_test)]))
-
-    acc = check_predictions(y_pred, y_test)
-    print(acc, " mean: ", np.mean(acc))
+    # MLP = NeuralNetwork([240, 50, 10], ["relu", "softmax"])
+    # start_time = time.time()
+    # epoch_loss = MLP.train(X_train, y_train, 200, 0.005, 5, 0.9, "L2")
+    # print("training mlp took ", time.time() - start_time)
+    #
+    # plt.plot(np.arange(999), epoch_loss[1:])
+    # plt.show()
+    #
+    # y_pred = MLP.predict(X_test)
+    #
+    # print("Test loss = ", np.mean([loss(pred, test) for pred, test in zip(y_pred, y_test)]))
+    #
+    # acc = check_predictions(y_pred, y_test)
+    # print(acc, " mean: ", np.mean(acc))
 
     # print([(np.argmax(y_test[i]), np.argmax(y_pred[i])) for i in range(len(y_test))])
 
