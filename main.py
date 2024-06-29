@@ -180,7 +180,7 @@ def cross_validate(x: np.ndarray, y: np.ndarray, epochs: int, learn_rate: float,
     return accuracies
 
 
-def random_search(x, y, param_range, iterations):
+def random_search(x, y, param_range, iterations, csv: bool = True):
     """
     Performs a random search for the hyperparameters
     :param x: training x
@@ -219,8 +219,10 @@ def random_search(x, y, param_range, iterations):
         score = np.mean([np.mean(acc) for acc in score])
 
         print(f"    Score: {score}")
-
-        results.append([score, input_size, hidden_size, mu, lamda, epochs, batch_count, norm])
+        result = [score, input_size, hidden_size, mu, lamda, epochs, batch_count, norm]
+        results.append(result)
+        with open(cwd + r'\results.txt', "a") as f:
+            f.write(f"{[str(i) for i in result]}\n")
 
     results = np.array(results)
     br = results[:, 0].argmax()
