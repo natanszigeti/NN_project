@@ -167,22 +167,24 @@ def cross_validate(x: np.ndarray, y: np.ndarray, epochs: int, learn_rate: float,
     split_x = [x[indices[int(i*sample_size/k):int((i+1)*sample_size/k)]] for i in range(k)]
     split_y = [y[indices[int(i*sample_size/k):int((i+1)*sample_size/k)]] for i in range(k)]
     accuracies = []
-    for i in range(len(split_x)):
-        train_x = np.vstack([split_x[j] for j in range(len(split_x)) if j != i])
-        train_y = np.vstack([split_y[j] for j in range(len(split_y)) if j != i])
+    for i in range(k):
+        train_x = np.vstack([split_x[j] for j in range(k) if j != i])
+        train_y = np.vstack([split_y[j] for j in range(k) if j != i])
         test_x = split_x[i]
         test_y = split_y[i]
         pca = PCA(input_layer_size).fit(train_x)
         MLP = NeuralNetwork([input_layer_size, hidden_layer_size, y.shape[1]], ["relu", "softmax"])
         MLP.train(pca.transform(train_x), train_y, epochs, learn_rate, batch_count, reg_const, reg_norm)
         accuracies.append(check_predictions(MLP.predict(pca.transform(test_x)), test_y))
+        print(f"        Completed fold {i+1} of {k}")
     return accuracies
 
 
-def random_search(data, param_range, iterations):
+def random_search(x, y, param_range, iterations):
     """
     Performs a random search for the hyperparameters
-    :param data: The array with data, with no preprocessing or loading done to it
+    :param x: training x
+    :param y: training y
     :param param_range: a dictionary with the ranges for the parameters, "input_layer" (ints), "min_hidden_layer" (int)
         "mu" (floats), "lamda" (floats), "epochs" (ints), "batch" (ints), "reg_norm" ("L1", "L2")
     :param iterations: how many random combinations to do
@@ -198,15 +200,11 @@ def random_search(data, param_range, iterations):
         batch_count = np.random.randint(*param_range["batch"])
         norm = np.random.choice(param_range["reg_norm"])
 
-        (X_train, y_train), _ = load_and_split_digits(data, param_range["train_split"], False)
-        X_train = preprocess_images(X_train)
-        y_train = preprocess_labels(y_train)
+        # (X_train, y_train), _ = load_and_split_digits(data, param_range["train_split"], False)
+        # X_train = preprocess_images(X_train)
+        # y_train = preprocess_labels(y_train)
 
-        score = cross_validate(X_train, y_train, epochs, mu, batch_count, lamda,
-                               norm, input_size, hidden_size, param_range["k"])
-        score = sum(score) / len(score)
-
-        print(f"{i+1}/{iterations}, Score:", score)
+        print(f"{i + 1}/{iterations}")
         print(f"    Dimensions: {input_size}")
         print(f"    Hidden layer size: {hidden_size}")
         print(f"    Mu: {mu}")
@@ -214,11 +212,18 @@ def random_search(data, param_range, iterations):
         print(f"    Epochs: {epochs}")
         print(f"    Batch count: {batch_count}")
         print(f"    Regularization: {norm}")
+
+        score = cross_validate(x, y, epochs, mu, batch_count, lamda,
+                               norm, input_size, hidden_size, param_range["k"])
+        score = np.mean([np.mean(acc) for acc in score])
+
+        print(f"    Score: {score}")
+
         results.append([score, input_size, hidden_size, mu, lamda, epochs, batch_count, norm])
 
     results = np.array(results)
     br = results[:, 0].argmax()
-    print("Best run:", br, "Score:", results[br, 0])
+    print("Best run:", br+1, "Score:", results[br, 0])
     print(f"    Dimensions: {int(results[br, 1])}")
     print(f"    Hidden layer size: {int(results[br, 2])}")
     print(f"    Mu: {results[br, 3]}")
@@ -234,30 +239,15 @@ if __name__ == "__main__":
     cwd = os.getcwd()
     mfeat_pix = np.loadtxt(cwd + r'\src\mfeat.pix.txt')
 
-    params = {
-        "input_layer": [11, 241],
-        "min_hidden_layer": 10,
-        "mu": [0.0001, 0.01],
-        "lamda": [0.0001, 0.01],
-        "epochs": [100, 1000],
-        "batch": [1, 10],
-        "reg_norm": ["L1", "L2"],
-        "train_split": 0.5,
-        "k": 10
-    }
-
-    random_search(mfeat_pix, params, 4)
-
-    '''
     (X_train, y_train), (X_test, y_test) = load_and_split_digits(mfeat_pix, 0.5, False)
 
     # flatten and normalize the images if its from mnist
     X_train = preprocess_images(X_train)
     X_test = preprocess_images(X_test)
 
-    pca = PCA(100).fit(X_train)
-    X_train_pca = pca.transform(X_train)
-    X_test_pca = pca.transform(X_test)
+    # pca = PCA(100).fit(X_train)
+    # X_train_pca = pca.transform(X_train)
+    # X_test_pca = pca.transform(X_test)
 
     # plt.scatter([i[0] for i in X_train_pca], [i[1] for i in X_train_pca], c=y_train, cmap="tab10")
     # plt.show()
@@ -270,9 +260,22 @@ if __name__ == "__main__":
     # indices = np.random.permutation(len(X_train))
     # show_digits(X_train[200:225], y_train[200:225])
 
-    accs = cross_validate(X_train, y_train, 200, 0.005, 5, 0.001, "L2", 50, 5)
+    params = {
+        "input_layer": [11, 241],
+        "min_hidden_layer": 10,
+        "mu": [0.0001, 0.01],
+        "lamda": [0.0001, 0.01],
+        "epochs": [100, 400],
+        "batch": [2, 10],
+        "reg_norm": ["none", "L1", "L2"],
+        "k": 5
+    }
 
-    print(np.mean([np.mean(acc) for acc in accs]))
+    random_search(X_train, y_train, params, 4)
+
+    # accs = cross_validate(X_train, y_train, 200, 0.005, 5, 0.001, "L2", 50, 5)
+
+    # print(np.mean([np.mean(acc) for acc in accs]))
 
     # MLP = NeuralNetwork([240, 50, 10], ["relu", "softmax"])
     # start_time = time.time()
@@ -292,4 +295,3 @@ if __name__ == "__main__":
     # print([(np.argmax(y_test[i]), np.argmax(y_pred[i])) for i in range(len(y_test))])
 
     # show_digits(X_test[:25], y_pred[:25])
-    '''

@@ -53,7 +53,7 @@ def regularizer_derivative(theta, norm):
         return np.sign(theta)
     elif norm == "L2":
         return theta
-    return 0
+    return np.zeros(theta.shape)
 
 
 def he_init(n_before: int, n_after: int) -> np.ndarray:
