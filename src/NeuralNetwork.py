@@ -124,7 +124,7 @@ class NeuralNetwork(object):
                 avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const, reg_norm)
                 # keep track of the loss
                 loss_per_epoch.append(avg_loss)
-            print(f"Completed epoch {i + 1} of {epochs}, average loss: ", avg_loss)
+            # print(f"Completed epoch {i + 1} of {epochs}, average loss: ", avg_loss)
         return loss_per_epoch
 
     def _gradient_descent(self, inp: np.ndarray, outp: np.ndarray, mu: float, lam: float, reg_norm: str) -> float:
