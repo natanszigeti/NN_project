@@ -1,8 +1,9 @@
 # imports
+from typing import Union
 import numpy as np
 
 
-def activation_function(z, function: str) -> list | np.ndarray | None:
+def activation_function(z, function: str) -> Union[list, np.ndarray, None]:
     """
     Defines several activation functions, as necessary
     :param z: Vector representing input to layer, consisting of the sum of weighted inputs and biases
@@ -16,7 +17,7 @@ def activation_function(z, function: str) -> list | np.ndarray | None:
     return None
 
 
-def activation_derivative(z, function: str, true: list[float]=None) -> list | np.ndarray | None:
+def activation_derivative(z, function: str, true: list[float] = None) -> Union[list, np.ndarray, None]:
     """
     The derivative of the activation function
     :param z: Vector representing input to layer, consisting of the sum of weighted inputs and biases
@@ -31,7 +32,7 @@ def activation_derivative(z, function: str, true: list[float]=None) -> list | np
     return None
 
 
-def loss(pred: list[float], true: list[int | float]) -> np.ndarray:
+def loss(pred: list[float], true: list[Union[int, float]]) -> np.ndarray:
     """
     Calculates the categorical cross entropy loss function
     :param pred: the predicted values by the model
@@ -39,32 +40,6 @@ def loss(pred: list[float], true: list[int | float]) -> np.ndarray:
     :return: Cross entropy value
     """
     return np.negative(np.sum(true * np.log(pred)))
-
-
-# DEPRECATED
-# DON'T ACTUALLY NEED THIS ANYMORE OOPS
-def loss_derivative(pred, true):
-    """
-    idek
-    :param pred:
-    :param true:
-    :return:
-    """
-    if len(pred) != len(true):
-        raise Exception("Pred and true not same length!")
-    return [(1 - true[i]) / (1 - pred[i]) - true[i] / pred[i] for i in range(len(pred))]
-
-# DEPRECATED
-# Dont need this actually i think
-def regularizer(weights, biases):
-    """
-    L1 regularizer, this is probably wrong
-    :param weights: Weight matrix
-    :param biases: Bias matrix
-    :return: L1 :D
-    """
-    return np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in weights])))  # + \
-        # np.sum(np.abs(np.hstack([np.matrix.flatten(item) for item in biases])))
 
 
 def regularizer_derivative(theta, norm):
@@ -92,8 +67,8 @@ def he_init(n_before: int, n_after: int) -> np.ndarray:
 
 
 class NeuralNetwork(object):
-        def __init__(self, sizes: list[int], activ_funcs: list[str]):
-        """
+    def __init__(self, sizes: list[int], activ_funcs: list[str]):
+        """"
         Class for a Multilayer perceptron neural network
         :param sizes: An array of integers detailing how many neurons each layer should have
         :param activ_funcs: An array of strings detailing the activation functions for each layer after input
@@ -122,7 +97,8 @@ class NeuralNetwork(object):
         predictions = np.array(predictions)
         return predictions
 
-    def train(self, x: np.ndarray, y: np.ndarray, epochs: int, learning_rate: float, batch_count: int, reg_const: float, reg_norm: str) -> list[float]:
+    def train(self, x: np.ndarray, y: np.ndarray, epochs: int, learning_rate: float, batch_count: int, reg_const: float,
+              reg_norm: str) -> list[float]:
         """
         trains the neural network.
         :param x: training data, input
@@ -145,7 +121,7 @@ class NeuralNetwork(object):
             for j in range(batch_count):
                 this_batch = indices[int(j * data_size / batch_count):int((j + 1) * data_size / batch_count)]
                 # perform gradient descent with this batch
-                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const)
+                avg_loss = self._gradient_descent(x[this_batch], y[this_batch], learning_rate, reg_const, reg_norm)
                 # keep track of the loss
                 loss_per_epoch.append(avg_loss)
             print(f"Completed epoch {i + 1} of {epochs}, average loss: ", avg_loss)
@@ -169,7 +145,7 @@ class NeuralNetwork(object):
 
         for x, y in zip(inp, outp):
             # for each training sample, we calculate how much we'd want the weights to change
-            change_b, change_w, out_loss = self._back_propagation(x, y, lam)
+            change_b, change_w, out_loss = self._back_propagation(x, y, lam, reg_norm)
 
             # we add these changes (averaged over the whole training batch) to the overall changes
             changes_b = [b1 + b2 / len(inp) for b1, b2 in zip(changes_b, change_b)]
@@ -212,7 +188,7 @@ class NeuralNetwork(object):
         # I got the following bit from the pseudocode on page 209 of the bible, I hope it works
         # do backpropagation
 
-        # we don't need to calculate loss but it's good for debugging
+        # we don't need to calculate loss, but it's good for debugging
         out_loss = loss(activations[-1], y)  # + lam * regularizer(self._weights, self._biases)
         # print("Loss: ", out_loss)
 
@@ -225,7 +201,7 @@ class NeuralNetwork(object):
             delta_bias = delta_activation  # + lam * regularizer_derivative(self._biases[i - 1], reg)
             # print("prev layer activation shape = ", np.shape(z_values[i-1].T))
             delta_weights = np.outer(delta_activation, z_values[i - 1].T) + \
-                            lam * regularizer_derivative(self._weights[i - 1], reg)
+                                lam * regularizer_derivative(self._weights[i - 1], reg)
             # print("delta_weights shape = ", np.shape(delta_weights))
             change_b.append(delta_bias)
             change_w.append(delta_weights)
