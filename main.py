@@ -185,8 +185,9 @@ def random_search(x, y, param_range, iterations):
     Performs a random search for the hyperparameters
     :param x: training x
     :param y: training y
-    :param param_range: a dictionary with the ranges for the parameters, "input_layer" (ints), "min_hidden_layer" (int)
-        "mu" (floats), "lamda" (floats), "epochs" (ints), "batch" (ints), "reg_norm" ("L1", "L2")
+    :param param_range: a dictionary with the ranges or mean and std for the parameters, "input_layer" (ints),
+        "min_hidden_layer" (int), "mu" (floats), "lamda" (floats), "epochs" (ints), "batch" (ints),
+        "reg_norm" ("L1", "L2")
     :param iterations: how many random combinations to do
     """
     results = []
@@ -194,8 +195,8 @@ def random_search(x, y, param_range, iterations):
         # Choose a random parameter for each in the correct shape
         input_size = np.random.randint(*param_range["input_layer"])
         hidden_size = np.random.randint(param_range["min_hidden_layer"], input_size)
-        mu = np.random.uniform(*param_range["mu"])
-        lamda = np.random.uniform(*param_range["lamda"])
+        mu = np.clip(np.random.lognormal(*param_range["mu"]), *param_range["mu_clip"])
+        lamda = np.clip(np.random.lognormal(*param_range["lamda"]), *param_range["lamda_clip"])
         epochs = np.random.randint(*param_range["epochs"])
         batch_count = np.random.randint(*param_range["batch"])
         norm = np.random.choice(param_range["reg_norm"])
@@ -261,12 +262,14 @@ if __name__ == "__main__":
     # show_digits(X_train[200:225], y_train[200:225])
 
     params = {
-        "input_layer": [11, 241],
+        "input_layer": [84, 241],
         "min_hidden_layer": 10,
-        "mu": [0.0001, 0.01],
-        "lamda": [0.0001, 0.01],
-        "epochs": [100, 400],
-        "batch": [2, 10],
+        "mu": [-2.5, 0.6],
+        "mu_clip": [0.001, 0.5],
+        "lamda": [-5.5, 0.6],
+        "lamda_clip": [0.0001, 0.05],
+        "epochs": [200, 401],
+        "batch": [2, 11],
         "reg_norm": ["none", "L1", "L2"],
         "k": 5
     }
