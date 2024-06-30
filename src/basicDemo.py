@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import block_diag
 
 # Load the pixel data
-mfeat_pix = np.loadtxt('mfeat-pix.txt')
+mfeat_pix = np.loadtxt('mfeat.pix.txt')
 
 # Plot the figure from the lecture notes
 plt.figure(1)
